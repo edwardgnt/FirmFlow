@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use App\Models\FollowUp;
 
 class IntakeController extends Controller
 {
@@ -25,6 +26,23 @@ class IntakeController extends Controller
             ->paginate(10);
 
         return view('intakes.index', compact('intakes'));
+    }
+
+    public function show(Request $request, Intake $intake)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            abort(403);
+        }
+
+        if ($intake->organization_id !== $user->organization_id) {
+            abort(404);
+        }
+
+        $intake->load(['contact', 'assignedUser', 'followUps.user']);
+
+        return view('intakes.show', compact('intake'));
     }
 
     public function create(Request $request)
@@ -110,5 +128,61 @@ class IntakeController extends Controller
         return redirect()
             ->route('intakes.index')
             ->with('status', 'Intake created successfully.');
+    }
+
+    public function storeFollowUp(Request $request, Intake $intake)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            abort(403);
+        }
+
+        if ($intake->organization_id !== $user->organization_id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'channel' => [
+                'required',
+                Rule::in(['call', 'email', 'sms', 'chat', 'internal_note']),
+            ],
+            'outcome' => [
+                'nullable',
+                Rule::in([
+                    'no_answer',
+                    'left_voicemail',
+                    'responded',
+                    'appointment_booked',
+                    'not_interested',
+                    'wrong_number',
+                    'other',
+                ]),
+            ],
+            'attempted_at' => ['required', 'date'],
+            'next_follow_up_at' => ['nullable', 'date', 'after_or_equal:attempted_at'],
+            'note' => ['nullable', 'string'],
+        ]);
+
+        DB::transaction(function () use ($validated, $intake, $user) {
+            FollowUp::create([
+                'organization_id' => $intake->organization_id,
+                'intake_id' => $intake->id,
+                'user_id' => $user->id,
+                'channel' => $validated['channel'],
+                'outcome' => $validated['outcome'] ?? null,
+                'note' => $validated['note'] ?? null,
+                'attempted_at' => $validated['attempted_at'],
+                'next_follow_up_at' => $validated['next_follow_up_at'] ?? null,
+            ]);
+
+            $intake->update([
+                'last_activity_at' => $validated['attempted_at'],
+            ]);
+        });
+
+        return redirect()
+            ->route('intakes.show', $intake)
+            ->with('status', 'Follow-up added successfully.');
     }
 }

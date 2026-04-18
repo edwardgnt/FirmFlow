@@ -53,6 +53,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('intakes', [IntakeController::class, 'index'])->name('intakes.index');
     Route::get('intakes/create', [IntakeController::class, 'create'])->name('intakes.create');
     Route::post('intakes', [IntakeController::class, 'store'])->name('intakes.store');
+    Route::post('intakes/{intake}/follow-ups', [IntakeController::class, 'storeFollowUp'])->name('intakes.follow-ups.store');
+    Route::get('intakes/{intake}', [IntakeController::class, 'show'])->name('intakes.show');
 });
 
 require __DIR__ . '/settings.php';

@@ -60,8 +60,13 @@
                                     <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
                                         {{ $intake->contact->first_name }} {{ $intake->contact->last_name }}
                                     </td>
-                                    <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
-                                        {{ $intake->summary }}
+                                    <td class="px-4 py-3 text-sm">
+                                        <a
+                                            href="{{ route('intakes.show', $intake) }}"
+                                            class="font-medium text-neutral-900 hover:underline dark:text-white"
+                                        >
+                                            {{ $intake->summary }}
+                                        </a>
                                     </td>
                                     <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
                                         {{ str($intake->status)->headline() }}
