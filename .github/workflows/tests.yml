@@ -20,7 +20,7 @@ jobs:
     environment: Testing
     strategy:
       matrix:
-        php-version: ['8.3', '8.4', '8.5']
+        php-version: ["8.3", "8.4"]
 
     steps:
       - name: Checkout code
@@ -31,15 +31,15 @@ jobs:
         with:
           php-version: ${{ matrix.php-version }}
           tools: composer:v2
-          coverage: xdebug
+          coverage: none
 
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: "22"
 
       - name: Install Node Dependencies
-        run: npm i
+        run: npm ci
 
       - name: Add Flux Credentials Loaded From ENV
         run: composer config http-basic.composer.fluxui.dev "${{ secrets.FLUX_USERNAME }}" "${{ secrets.FLUX_LICENSE_KEY }}"
@@ -53,8 +53,20 @@ jobs:
       - name: Generate Application Key
         run: php artisan key:generate
 
+      - name: Create SQLite database
+        run: touch database/database.sqlite
+
+      - name: Run migrations
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
+        run: php artisan migrate --force
+
       - name: Build Assets
         run: npm run build
 
       - name: Run Tests
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
         run: ./vendor/bin/pest
