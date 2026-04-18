@@ -35,9 +35,24 @@
                         <dt class="text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                             Status
                         </dt>
-                        <dd class="mt-1 text-sm text-neutral-900 dark:text-white">
+                        @php
+                            $statusClasses = match ($intake->status) {
+                                'new' => 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300',
+                                'contacted' => 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+                                'qualified'
+                                    => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+                                'appointment_set'
+                                    => 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300',
+                                'won' => 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+                                'lost' => 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300',
+                                default => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300',
+                            };
+                        @endphp
+
+                        <span
+                            class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $statusClasses }}">
                             {{ str($intake->status)->headline() }}
-                        </dd>
+                        </span>
                     </div>
 
                     <div>
@@ -140,6 +155,79 @@
                 </dl>
             </div>
         </div>
+        <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-neutral-900">
+            <div class="mb-4 flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">
+                    Update Intake
+                </h2>
+            </div>
+
+            <form method="POST" action="{{ route('intakes.update', $intake) }}" class="space-y-6">
+                @csrf
+                @method('PATCH')
+
+                <div class="grid gap-6 md:grid-cols-3">
+                    <div>
+                        <label for="status" class="mb-2 block text-sm font-medium text-neutral-900 dark:text-white">
+                            Status
+                        </label>
+                        <select id="status" name="status"
+                            class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-neutral-900 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white">
+                            <option value="new" @selected(old('status', $intake->status) === 'new')>New</option>
+                            <option value="contacted" @selected(old('status', $intake->status) === 'contacted')>Contacted</option>
+                            <option value="qualified" @selected(old('status', $intake->status) === 'qualified')>Qualified</option>
+                            <option value="appointment_set" @selected(old('status', $intake->status) === 'appointment_set')>Appointment Set</option>
+                            <option value="won" @selected(old('status', $intake->status) === 'won')>Won</option>
+                            <option value="lost" @selected(old('status', $intake->status) === 'lost')>Lost</option>
+                        </select>
+                        @error('status')
+                            <p class="mt-2 text-sm text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label for="urgency" class="mb-2 block text-sm font-medium text-neutral-900 dark:text-white">
+                            Urgency
+                        </label>
+                        <select id="urgency" name="urgency"
+                            class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-neutral-900 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white">
+                            <option value="low" @selected(old('urgency', $intake->urgency) === 'low')>Low</option>
+                            <option value="normal" @selected(old('urgency', $intake->urgency) === 'normal')>Normal</option>
+                            <option value="high" @selected(old('urgency', $intake->urgency) === 'high')>High</option>
+                        </select>
+                        @error('urgency')
+                            <p class="mt-2 text-sm text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label for="assigned_user_id"
+                            class="mb-2 block text-sm font-medium text-neutral-900 dark:text-white">
+                            Assigned User
+                        </label>
+                        <select id="assigned_user_id" name="assigned_user_id"
+                            class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-neutral-900 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white">
+                            <option value="">Unassigned</option>
+                            @foreach ($assignees as $assignee)
+                                <option value="{{ $assignee->id }}" @selected(old('assigned_user_id', $intake->assigned_user_id) == $assignee->id)>
+                                    {{ $assignee->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('assigned_user_id')
+                            <p class="mt-2 text-sm text-red-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit"
+                        class="inline-flex items-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
 
         <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-neutral-900">
             <div class="mb-4 flex items-center justify-between">
@@ -180,7 +268,8 @@
                             <option value="no_answer" @selected(old('outcome') === 'no_answer')>No Answer</option>
                             <option value="left_voicemail" @selected(old('outcome') === 'left_voicemail')>Left Voicemail</option>
                             <option value="responded" @selected(old('outcome') === 'responded')>Responded</option>
-                            <option value="appointment_booked" @selected(old('outcome') === 'appointment_booked')>Appointment Booked</option>
+                            <option value="appointment_booked" @selected(old('outcome') === 'appointment_booked')>Appointment Booked
+                            </option>
                             <option value="not_interested" @selected(old('outcome') === 'not_interested')>Not Interested</option>
                             <option value="wrong_number" @selected(old('outcome') === 'wrong_number')>Wrong Number</option>
                             <option value="other" @selected(old('outcome') === 'other')>Other</option>

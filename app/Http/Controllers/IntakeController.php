@@ -20,12 +20,51 @@ class IntakeController extends Controller
             abort(403);
         }
 
+        $status = $request->string('status')->toString();
+        $source = $request->string('source')->toString();
+        $assignedUserId = $request->string('assigned_user_id')->toString();
+
         $intakes = Intake::with(['contact', 'assignedUser'])
             ->where('organization_id', $user->organization_id)
-            ->latest()
-            ->paginate(10);
+            ->when($status !== '', function ($query) use ($status) {
+                $query->where('status', $status);
+            })
+            ->when($source !== '', function ($query) use ($source) {
+                $query->where('source', $source);
+            })
+            ->when($assignedUserId !== '', function ($query) use ($assignedUserId) {
+                if ($assignedUserId === 'unassigned') {
+                    $query->whereNull('assigned_user_id');
 
-        return view('intakes.index', compact('intakes'));
+                    return;
+                }
+
+                $query->where('assigned_user_id', $assignedUserId);
+            })
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        $assignees = User::where('organization_id', $user->organization_id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $sources = Intake::where('organization_id', $user->organization_id)
+            ->whereNotNull('source')
+            ->select('source')
+            ->distinct()
+            ->orderBy('source')
+            ->pluck('source');
+
+        return view('intakes.index', compact(
+            'intakes',
+            'assignees',
+            'sources',
+            'status',
+            'source',
+            'assignedUserId'
+        ));
     }
 
     public function show(Request $request, Intake $intake)
@@ -42,7 +81,12 @@ class IntakeController extends Controller
 
         $intake->load(['contact', 'assignedUser', 'followUps.user']);
 
-        return view('intakes.show', compact('intake'));
+        $assignees = User::where('organization_id', $user->organization_id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return view('intakes.show', compact('intake', 'assignees'));
     }
 
     public function create(Request $request)
@@ -115,7 +159,9 @@ class IntakeController extends Controller
                 'organization_id' => $organizationId,
                 'contact_id' => $contact->id,
                 'assigned_user_id' => $validated['assigned_user_id'] ?? null,
-                'source' => $validated['source'] ?? null,
+                'source' => filled($validated['source'] ?? null)
+                    ? str($validated['source'])->lower()->trim()->toString()
+                    : null,
                 'status' => $validated['status'],
                 'urgency' => $validated['urgency'],
                 'summary' => $validated['summary'],
@@ -128,6 +174,49 @@ class IntakeController extends Controller
         return redirect()
             ->route('intakes.index')
             ->with('status', 'Intake created successfully.');
+    }
+
+    public function update(Request $request, Intake $intake)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            abort(403);
+        }
+
+        if ($intake->organization_id !== $user->organization_id) {
+            abort(404);
+        }
+
+        $organizationId = $user->organization_id;
+
+        $validated = $request->validate([
+            'status' => [
+                'required',
+                Rule::in(['new', 'contacted', 'qualified', 'appointment_set', 'won', 'lost']),
+            ],
+            'urgency' => [
+                'required',
+                Rule::in(['low', 'normal', 'high']),
+            ],
+            'assigned_user_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where(function ($query) use ($organizationId) {
+                    $query->where('organization_id', $organizationId);
+                }),
+            ],
+        ]);
+
+        $intake->update([
+            'status' => $validated['status'],
+            'urgency' => $validated['urgency'],
+            'assigned_user_id' => $validated['assigned_user_id'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('intakes.show', $intake)
+            ->with('status', 'Intake updated successfully.');
     }
 
     public function storeFollowUp(Request $request, Intake $intake)
