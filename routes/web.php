@@ -6,6 +6,7 @@ use App\Models\Intake;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use App\Http\Controllers\IntakeController;
+use App\Http\Controllers\FollowUpController;
 
 
 Route::view('/', 'welcome')->name('home');
@@ -77,6 +78,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('intakes/{intake}/follow-ups', [IntakeController::class, 'storeFollowUp'])->name('intakes.follow-ups.store');
     Route::get('intakes/{intake}', [IntakeController::class, 'show'])->name('intakes.show');
     Route::patch('intakes/{intake}', [IntakeController::class, 'update'])->name('intakes.update');
+
+    Route::get('follow-ups/queue', [FollowUpController::class, 'queue'])->name('follow-ups.queue');
 });
 
 require __DIR__ . '/settings.php';
