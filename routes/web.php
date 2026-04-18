@@ -40,13 +40,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->take(5)
             ->get();
 
+        $overdueFollowUps = FollowUp::with(['intake.contact', 'intake.assignedUser', 'user'])
+            ->where('organization_id', $organizationId)
+            ->whereNotNull('next_follow_up_at')
+            ->where('next_follow_up_at', '<', now())
+            ->orderBy('next_follow_up_at')
+            ->take(5)
+            ->get();
+
+        $needsAttentionIntakes = Intake::with(['contact', 'assignedUser'])
+            ->where('organization_id', $organizationId)
+            ->whereNotIn('status', ['won', 'lost'])
+            ->where(function ($query) {
+                $query->whereNull('assigned_user_id')
+                    ->orWhere('last_activity_at', '<=', now()->subDays(2));
+            })
+            ->orderBy('last_activity_at')
+            ->take(5)
+            ->get();
+
         return view('dashboard', compact(
             'totalContacts',
             'totalIntakes',
             'newIntakes',
             'contactedIntakes',
             'totalFollowUps',
-            'recentIntakes'
+            'recentIntakes',
+            'overdueFollowUps',
+            'needsAttentionIntakes'
         ));
     })->name('dashboard');
 
