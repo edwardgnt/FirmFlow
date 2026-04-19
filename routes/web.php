@@ -80,6 +80,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('intakes/{intake}', [IntakeController::class, 'update'])->name('intakes.update');
 
     Route::get('follow-ups/queue', [FollowUpController::class, 'queue'])->name('follow-ups.queue');
+    Route::patch('follow-ups/queue/intakes/{intake}/reassign', [FollowUpController::class, 'reassign'])
+        ->name('follow-ups.queue.reassign');
 });
 
 require __DIR__ . '/settings.php';

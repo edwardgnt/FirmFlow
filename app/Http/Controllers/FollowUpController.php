@@ -6,6 +6,7 @@ use App\Models\FollowUp;
 use App\Models\Intake;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class FollowUpController extends Controller
 {
@@ -78,5 +79,36 @@ class FollowUpController extends Controller
             'sources',
             'sort'
         ));
+    }
+
+    public function reassign(Request $request, Intake $intake)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            abort(403);
+        }
+
+        if ($intake->organization_id !== $user->organization_id) {
+            abort(404);
+        }
+
+        $organizationId = $user->organization_id;
+
+        $validated = $request->validate([
+            'assigned_user_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where(function ($query) use ($organizationId) {
+                    $query->where('organization_id', $organizationId);
+                }),
+            ],
+        ]);
+
+        $intake->update([
+            'assigned_user_id' => $validated['assigned_user_id'] ?? null,
+        ]);
+
+        return back()->with('status', 'Assignee updated successfully.');
     }
 }
