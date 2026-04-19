@@ -104,7 +104,7 @@
         </form>
 
         <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-neutral-900">
-            @if ($followUps->isEmpty())
+            @if ($intakes->isEmpty())
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">
                     No overdue follow-ups right now.
                 </p>
@@ -127,14 +127,6 @@
                                 </th>
                                 <th
                                     class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                                    Channel
-                                </th>
-                                <th
-                                    class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                                    Outcome
-                                </th>
-                                <th
-                                    class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                                     Source
                                 </th>
                                 <th
@@ -143,11 +135,15 @@
                                 </th>
                                 <th
                                     class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                                    Due
+                                    Oldest Due
                                 </th>
                                 <th
                                     class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                                     Days Overdue
+                                </th>
+                                <th
+                                    class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                                    Overdue Count
                                 </th>
                                 <th
                                     class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
@@ -164,9 +160,9 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-neutral-200 dark:divide-neutral-800">
-                            @foreach ($followUps as $followUp)
+                            @foreach ($intakes as $intake)
                                 @php
-                                    $intakeStatusClasses = match ($followUp->intake->status) {
+                                    $intakeStatusClasses = match ($intake->status) {
                                         'new' => 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300',
                                         'contacted'
                                             => 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
@@ -180,7 +176,7 @@
                                             => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300',
                                     };
 
-                                    $sourceClasses = match ($followUp->intake->source) {
+                                    $sourceClasses = match ($intake->source) {
                                         'website' => 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300',
                                         'referral'
                                             => 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/40 dark:text-fuchsia-300',
@@ -191,52 +187,45 @@
                                             => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300',
                                     };
 
-                                    $daysOverdue = $followUp->next_follow_up_at
-                                        ? (int) floor($followUp->next_follow_up_at->diffInDays(now()))
-                                        : 0;
+                                    $oldestDue = $intake->oldest_overdue_at
+                                        ? \Illuminate\Support\Carbon::parse($intake->oldest_overdue_at)
+                                        : null;
+
+                                    $daysOverdue = $oldestDue ? (int) floor($oldestDue->diffInDays(now())) : 0;
                                 @endphp
 
                                 <tr>
                                     <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
-                                        {{ $followUp->intake->contact->first_name }}
-                                        {{ $followUp->intake->contact->last_name }}
+                                        {{ $intake->contact->first_name }} {{ $intake->contact->last_name }}
                                     </td>
 
                                     <td class="px-4 py-3 text-sm">
-                                        <a href="{{ route('intakes.show', $followUp->intake) }}"
+                                        <a href="{{ route('intakes.show', $intake) }}"
                                             class="font-medium text-neutral-900 hover:underline dark:text-white">
-                                            {{ $followUp->intake->summary }}
+                                            {{ $intake->summary }}
                                         </a>
                                     </td>
 
                                     <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
-                                        {{ $followUp->intake->assignedUser->name ?? 'Unassigned' }}
-                                    </td>
-
-                                    <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
-                                        {{ str($followUp->channel)->headline() }}
-                                    </td>
-
-                                    <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
-                                        {{ $followUp->outcome ? str($followUp->outcome)->headline() : '—' }}
+                                        {{ $intake->assignedUser->name ?? 'Unassigned' }}
                                     </td>
 
                                     <td class="px-4 py-3 text-sm">
                                         <span
                                             class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $sourceClasses }}">
-                                            {{ $followUp->intake->source ? str($followUp->intake->source)->headline() : '—' }}
+                                            {{ $intake->source ? str($intake->source)->headline() : '—' }}
                                         </span>
                                     </td>
 
                                     <td class="px-4 py-3 text-sm">
                                         <span
                                             class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $intakeStatusClasses }}">
-                                            {{ str($followUp->intake->status)->headline() }}
+                                            {{ str($intake->status)->headline() }}
                                         </span>
                                     </td>
 
                                     <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
-                                        {{ $followUp->next_follow_up_at?->format('M d, Y g:i A') ?? '—' }}
+                                        {{ $oldestDue?->format('M d, Y g:i A') ?? '—' }}
                                     </td>
 
                                     <td class="px-4 py-3 text-sm">
@@ -246,15 +235,19 @@
                                         </span>
                                     </td>
 
+                                    <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
+                                        {{ $intake->overdue_follow_ups_count }}
+                                    </td>
+
                                     <td class="px-4 py-3 text-sm">
                                         <span
                                             class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 text-xs font-medium text-rose-800 dark:bg-rose-900/40 dark:text-rose-300">
                                             Overdue
                                         </span>
                                     </td>
+
                                     <td class="px-4 py-3 text-sm">
-                                        <form method="POST"
-                                            action="{{ route('follow-ups.queue.reassign', $followUp->intake) }}"
+                                        <form method="POST" action="{{ route('follow-ups.queue.reassign', $intake) }}"
                                             class="flex flex-col gap-2">
                                             @csrf
                                             @method('PATCH')
@@ -263,7 +256,7 @@
                                                 class="min-w-[11rem] rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white">
                                                 <option value="">Unassigned</option>
                                                 @foreach ($assignees as $assignee)
-                                                    <option value="{{ $assignee->id }}" @selected($followUp->intake->assigned_user_id == $assignee->id)>
+                                                    <option value="{{ $assignee->id }}" @selected($intake->assigned_user_id == $assignee->id)>
                                                         {{ $assignee->name }}
                                                     </option>
                                                 @endforeach
@@ -275,8 +268,9 @@
                                             </button>
                                         </form>
                                     </td>
+
                                     <td class="px-4 py-3 text-sm">
-                                        <a href="{{ route('intakes.show', $followUp->intake) }}"
+                                        <a href="{{ route('intakes.show', $intake) }}"
                                             class="inline-flex items-center rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800">
                                             Open Intake
                                         </a>
@@ -288,7 +282,7 @@
                 </div>
 
                 <div class="mt-6">
-                    {{ $followUps->links() }}
+                    {{ $intakes->links() }}
                 </div>
             @endif
         </div>

@@ -23,38 +23,43 @@ class FollowUpController extends Controller
         $source = $request->string('source')->toString();
         $sort = $request->string('sort')->toString() ?: 'oldest_due';
 
-        $followUpsQuery = FollowUp::with(['intake.contact', 'intake.assignedUser', 'user'])
-            ->where('organization_id', $user->organization_id)
-            ->whereNotNull('next_follow_up_at')
-            ->where('next_follow_up_at', '<', now())
-            ->when($assignedUserId !== '', function ($query) use ($assignedUserId) {
-                $query->whereHas('intake', function ($intakeQuery) use ($assignedUserId) {
-                    if ($assignedUserId === 'unassigned') {
-                        $intakeQuery->whereNull('assigned_user_id');
-                        return;
-                    }
+        $overdueScope = function ($query) {
+            $query->whereNotNull('next_follow_up_at')
+                ->where('next_follow_up_at', '<', now());
+        };
 
-                    $intakeQuery->where('assigned_user_id', $assignedUserId);
-                });
+        $intakesQuery = Intake::with(['contact', 'assignedUser'])
+            ->where('organization_id', $user->organization_id)
+            ->whereHas('followUps', $overdueScope)
+            ->withCount([
+                'followUps as overdue_follow_ups_count' => $overdueScope,
+            ])
+            ->withMin([
+                'followUps as oldest_overdue_at' => $overdueScope,
+            ], 'next_follow_up_at')
+            ->when($assignedUserId !== '', function ($query) use ($assignedUserId) {
+                if ($assignedUserId === 'unassigned') {
+                    $query->whereNull('assigned_user_id');
+
+                    return;
+                }
+
+                $query->where('assigned_user_id', $assignedUserId);
             })
             ->when($status !== '', function ($query) use ($status) {
-                $query->whereHas('intake', function ($intakeQuery) use ($status) {
-                    $intakeQuery->where('status', $status);
-                });
+                $query->where('status', $status);
             })
             ->when($source !== '', function ($query) use ($source) {
-                $query->whereHas('intake', function ($intakeQuery) use ($source) {
-                    $intakeQuery->where('source', $source);
-                });
+                $query->where('source', $source);
             });
 
         if ($sort === 'newest_due') {
-            $followUpsQuery->orderByDesc('next_follow_up_at');
+            $intakesQuery->orderByDesc('oldest_overdue_at');
         } else {
-            $followUpsQuery->orderBy('next_follow_up_at');
+            $intakesQuery->orderBy('oldest_overdue_at');
         }
 
-        $followUps = $followUpsQuery
+        $intakes = $intakesQuery
             ->paginate(10)
             ->withQueryString();
 
@@ -71,7 +76,7 @@ class FollowUpController extends Controller
             ->pluck('source');
 
         return view('follow-ups.queue', compact(
-            'followUps',
+            'intakes',
             'assignees',
             'assignedUserId',
             'status',
