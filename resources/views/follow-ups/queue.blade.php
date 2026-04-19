@@ -116,6 +116,10 @@
                                     class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                                     Status
                                 </th>
+                                <th
+                                    class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                                    Action
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -147,7 +151,7 @@
                                     <td class="px-4 py-3 text-sm">
                                         @php
                                             $daysOverdue = $followUp->next_follow_up_at
-                                                ? $followUp->next_follow_up_at->diffInDays(now())
+                                                ? (int) floor($followUp->next_follow_up_at->diffInDays(now()))
                                                 : 0;
                                         @endphp
 
@@ -162,6 +166,12 @@
                                             class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 text-xs font-medium text-rose-800 dark:bg-rose-900/40 dark:text-rose-300">
                                             Overdue
                                         </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <a href="{{ route('intakes.show', $followUp->intake) }}"
+                                            class="inline-flex items-center rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800">
+                                            Open Intake
+                                        </a>
                                     </td>
                                 </tr>
                             @endforeach
