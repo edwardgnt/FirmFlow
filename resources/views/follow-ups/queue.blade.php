@@ -12,7 +12,7 @@
         {{-- Filters --}}
         <form method="GET" action="{{ route('follow-ups.queue') }}">
             <div
-                class="grid gap-4 rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-neutral-900 md:grid-cols-5">
+                class="grid gap-4 rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-neutral-900 md:grid-cols-6">
                 <div>
                     <label for="assigned_user_id" class="mb-2 block text-sm font-medium text-neutral-900 dark:text-white">
                         Assigned User
@@ -57,6 +57,20 @@
                                 {{ str($sourceOption)->headline() }}
                             </option>
                         @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label for="sort" class="mb-2 block text-sm font-medium text-neutral-900 dark:text-white">
+                        Sort By
+                    </label>
+                    <select id="sort" name="sort"
+                        class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-neutral-900 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white">
+                        <option value="oldest_due" @selected(($sort ?? 'oldest_due') === 'oldest_due')>
+                            Oldest Due First
+                        </option>
+                        <option value="newest_due" @selected(($sort ?? '') === 'newest_due')>
+                            Newest Due First
+                        </option>
                     </select>
                 </div>
 
@@ -106,6 +120,14 @@
                                 </th>
                                 <th
                                     class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                                    Source
+                                </th>
+                                <th
+                                    class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                                    Intake Status
+                                </th>
+                                <th
+                                    class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                                     Due
                                 </th>
                                 <th
@@ -114,7 +136,7 @@
                                 </th>
                                 <th
                                     class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                                    Status
+                                    Queue Status
                                 </th>
                                 <th
                                     class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
@@ -124,37 +146,81 @@
                         </thead>
                         <tbody class="divide-y divide-neutral-200 dark:divide-neutral-800">
                             @foreach ($followUps as $followUp)
+                                @php
+                                    $intakeStatusClasses = match ($followUp->intake->status) {
+                                        'new' => 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300',
+                                        'contacted'
+                                            => 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+                                        'qualified'
+                                            => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+                                        'appointment_set'
+                                            => 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300',
+                                        'won' => 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+                                        'lost' => 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300',
+                                        default
+                                            => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300',
+                                    };
+
+                                    $sourceClasses = match ($followUp->intake->source) {
+                                        'website' => 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300',
+                                        'referral'
+                                            => 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/40 dark:text-fuchsia-300',
+                                        'call'
+                                            => 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+                                        'chat' => 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300',
+                                        default
+                                            => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300',
+                                    };
+
+                                    $daysOverdue = $followUp->next_follow_up_at
+                                        ? (int) floor($followUp->next_follow_up_at->diffInDays(now()))
+                                        : 0;
+                                @endphp
+
                                 <tr>
                                     <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
                                         {{ $followUp->intake->contact->first_name }}
                                         {{ $followUp->intake->contact->last_name }}
                                     </td>
+
                                     <td class="px-4 py-3 text-sm">
                                         <a href="{{ route('intakes.show', $followUp->intake) }}"
                                             class="font-medium text-neutral-900 hover:underline dark:text-white">
                                             {{ $followUp->intake->summary }}
                                         </a>
                                     </td>
+
                                     <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
                                         {{ $followUp->intake->assignedUser->name ?? 'Unassigned' }}
                                     </td>
+
                                     <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
                                         {{ str($followUp->channel)->headline() }}
                                     </td>
+
                                     <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
                                         {{ $followUp->outcome ? str($followUp->outcome)->headline() : '—' }}
                                     </td>
+
+                                    <td class="px-4 py-3 text-sm">
+                                        <span
+                                            class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $sourceClasses }}">
+                                            {{ $followUp->intake->source ? str($followUp->intake->source)->headline() : '—' }}
+                                        </span>
+                                    </td>
+
+                                    <td class="px-4 py-3 text-sm">
+                                        <span
+                                            class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $intakeStatusClasses }}">
+                                            {{ str($followUp->intake->status)->headline() }}
+                                        </span>
+                                    </td>
+
                                     <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
                                         {{ $followUp->next_follow_up_at?->format('M d, Y g:i A') ?? '—' }}
                                     </td>
 
                                     <td class="px-4 py-3 text-sm">
-                                        @php
-                                            $daysOverdue = $followUp->next_follow_up_at
-                                                ? (int) floor($followUp->next_follow_up_at->diffInDays(now()))
-                                                : 0;
-                                        @endphp
-
                                         <span
                                             class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                                             {{ $daysOverdue > 0 ? $daysOverdue . ' ' . ($daysOverdue === 1 ? 'day' : 'days') : 'Due today' }}
@@ -167,6 +233,7 @@
                                             Overdue
                                         </span>
                                     </td>
+
                                     <td class="px-4 py-3 text-sm">
                                         <a href="{{ route('intakes.show', $followUp->intake) }}"
                                             class="inline-flex items-center rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800">

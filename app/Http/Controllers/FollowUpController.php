@@ -20,8 +20,9 @@ class FollowUpController extends Controller
         $assignedUserId = $request->string('assigned_user_id')->toString();
         $status = $request->string('status')->toString();
         $source = $request->string('source')->toString();
+        $sort = $request->string('sort')->toString() ?: 'oldest_due';
 
-        $followUps = FollowUp::with(['intake.contact', 'intake.assignedUser', 'user'])
+        $followUpsQuery = FollowUp::with(['intake.contact', 'intake.assignedUser', 'user'])
             ->where('organization_id', $user->organization_id)
             ->whereNotNull('next_follow_up_at')
             ->where('next_follow_up_at', '<', now())
@@ -44,8 +45,15 @@ class FollowUpController extends Controller
                 $query->whereHas('intake', function ($intakeQuery) use ($source) {
                     $intakeQuery->where('source', $source);
                 });
-            })
-            ->orderBy('next_follow_up_at')
+            });
+
+        if ($sort === 'newest_due') {
+            $followUpsQuery->orderByDesc('next_follow_up_at');
+        } else {
+            $followUpsQuery->orderBy('next_follow_up_at');
+        }
+
+        $followUps = $followUpsQuery
             ->paginate(10)
             ->withQueryString();
 
@@ -67,7 +75,8 @@ class FollowUpController extends Controller
             'assignedUserId',
             'status',
             'source',
-            'sources'
+            'sources',
+            'sort'
         ));
     }
 }
