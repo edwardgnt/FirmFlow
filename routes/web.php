@@ -82,6 +82,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('follow-ups/queue', [FollowUpController::class, 'queue'])->name('follow-ups.queue');
     Route::patch('follow-ups/queue/intakes/{intake}/reassign', [FollowUpController::class, 'reassign'])
         ->name('follow-ups.queue.reassign');
+    Route::post('follow-ups/queue/intakes/{intake}/log', [FollowUpController::class, 'logFromQueue'])
+        ->name('follow-ups.queue.log');
 });
 
 require __DIR__ . '/settings.php';

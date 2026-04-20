@@ -16,7 +16,7 @@
                 <span>{{ session('status') }}</span>
 
                 <button type="button" @click="show = false"
-                    class="shrink-0 rounded-md px-2 py-1 text-sm font-medium text-emerald-700/80 hover:bg-emerald-100 hover:text-emerald-900 dark:text-emerald-300/80 dark:hover:bg-emerald-900/40 dark:hover:text-emerald-100"
+                    class="shrink-0 rounded-md px-2 py-1 text-base font-semibold leading-none text-emerald-700 hover:bg-emerald-100 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
                     aria-label="Dismiss success message">
                     ×
                 </button>
@@ -194,97 +194,208 @@
                                     $daysOverdue = $oldestDue ? (int) floor($oldestDue->diffInDays(now())) : 0;
                                 @endphp
 
-                                <tr>
-                                    <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
-                                        {{ $intake->contact->first_name }} {{ $intake->contact->last_name }}
-                                    </td>
+                        <tbody x-data="{ open: false }" class="divide-y divide-neutral-200 dark:divide-neutral-800">
+                            <tr>
+                                <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
+                                    {{ $intake->contact->first_name }} {{ $intake->contact->last_name }}
+                                </td>
 
-                                    <td class="px-4 py-3 text-sm">
+                                <td class="px-4 py-3 text-sm">
+                                    <a href="{{ route('intakes.show', $intake) }}"
+                                        class="font-medium text-neutral-900 hover:underline dark:text-white">
+                                        {{ $intake->summary }}
+                                    </a>
+                                </td>
+
+                                <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
+                                    {{ $intake->assignedUser->name ?? 'Unassigned' }}
+                                </td>
+
+                                <td class="px-4 py-3 text-sm">
+                                    <span
+                                        class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $sourceClasses }}">
+                                        {{ $intake->source ? str($intake->source)->headline() : '—' }}
+                                    </span>
+                                </td>
+
+                                <td class="px-4 py-3 text-sm">
+                                    <span
+                                        class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $intakeStatusClasses }}">
+                                        {{ str($intake->status)->headline() }}
+                                    </span>
+                                </td>
+
+                                <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
+                                    {{ $oldestDue?->format('M d, Y g:i A') ?? '—' }}
+                                </td>
+
+                                <td class="px-4 py-3 text-sm">
+                                    <span
+                                        class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                        {{ $daysOverdue > 0 ? $daysOverdue . ' ' . ($daysOverdue === 1 ? 'day' : 'days') : 'Due today' }}
+                                    </span>
+                                </td>
+
+                                <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
+                                    {{ $intake->overdue_follow_ups_count }}
+                                </td>
+
+                                <td class="px-4 py-3 text-sm">
+                                    <span
+                                        class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 text-xs font-medium text-rose-800 dark:bg-rose-900/40 dark:text-rose-300">
+                                        Overdue
+                                    </span>
+                                </td>
+
+                                <td class="px-4 py-3 text-sm">
+                                    <form method="POST" action="{{ route('follow-ups.queue.reassign', $intake) }}"
+                                        class="flex flex-col gap-2">
+                                        @csrf
+                                        @method('PATCH')
+
+                                        <select name="assigned_user_id"
+                                            class="min-w-44 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white">
+                                            <option value="">Unassigned</option>
+                                            @foreach ($assignees as $assignee)
+                                                <option value="{{ $assignee->id }}" @selected($intake->assigned_user_id == $assignee->id)>
+                                                    {{ $assignee->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+
+                                        <button type="submit"
+                                            class="inline-flex items-center justify-center rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800">
+                                            Save
+                                        </button>
+                                    </form>
+                                </td>
+
+                                <td class="px-4 py-3 text-sm">
+                                    <div class="flex flex-col gap-2">
+                                        <button type="button" @click="open = !open"
+                                            class="inline-flex items-center justify-center rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800">
+                                            Log Follow-Up
+                                        </button>
+
                                         <a href="{{ route('intakes.show', $intake) }}"
-                                            class="font-medium text-neutral-900 hover:underline dark:text-white">
-                                            {{ $intake->summary }}
-                                        </a>
-                                    </td>
-
-                                    <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
-                                        {{ $intake->assignedUser->name ?? 'Unassigned' }}
-                                    </td>
-
-                                    <td class="px-4 py-3 text-sm">
-                                        <span
-                                            class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $sourceClasses }}">
-                                            {{ $intake->source ? str($intake->source)->headline() : '—' }}
-                                        </span>
-                                    </td>
-
-                                    <td class="px-4 py-3 text-sm">
-                                        <span
-                                            class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $intakeStatusClasses }}">
-                                            {{ str($intake->status)->headline() }}
-                                        </span>
-                                    </td>
-
-                                    <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
-                                        {{ $oldestDue?->format('M d, Y g:i A') ?? '—' }}
-                                    </td>
-
-                                    <td class="px-4 py-3 text-sm">
-                                        <span
-                                            class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                                            {{ $daysOverdue > 0 ? $daysOverdue . ' ' . ($daysOverdue === 1 ? 'day' : 'days') : 'Due today' }}
-                                        </span>
-                                    </td>
-
-                                    <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
-                                        {{ $intake->overdue_follow_ups_count }}
-                                    </td>
-
-                                    <td class="px-4 py-3 text-sm">
-                                        <span
-                                            class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 text-xs font-medium text-rose-800 dark:bg-rose-900/40 dark:text-rose-300">
-                                            Overdue
-                                        </span>
-                                    </td>
-
-                                    <td class="px-4 py-3 text-sm">
-                                        <form method="POST" action="{{ route('follow-ups.queue.reassign', $intake) }}"
-                                            class="flex flex-col gap-2">
-                                            @csrf
-                                            @method('PATCH')
-
-                                            <select name="assigned_user_id"
-                                                class="min-w-[11rem] rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white">
-                                                <option value="">Unassigned</option>
-                                                @foreach ($assignees as $assignee)
-                                                    <option value="{{ $assignee->id }}" @selected($intake->assigned_user_id == $assignee->id)>
-                                                        {{ $assignee->name }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-
-                                            <button type="submit"
-                                                class="inline-flex items-center justify-center rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800">
-                                                Save
-                                            </button>
-                                        </form>
-                                    </td>
-
-                                    <td class="px-4 py-3 text-sm">
-                                        <a href="{{ route('intakes.show', $intake) }}"
-                                            class="inline-flex items-center rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800">
+                                            class="inline-flex items-center justify-center rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800">
                                             Open Intake
                                         </a>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                                    </div>
+                                </td>
+                            </tr>
 
-                <div class="mt-6">
-                    {{ $intakes->links() }}
-                </div>
-            @endif
+                            <tr x-show="open" x-transition>
+                                <td colspan="11" class="px-4 py-4">
+                                    <div
+                                        class="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/40">
+                                        <form method="POST" action="{{ route('follow-ups.queue.log', $intake) }}"
+                                            class="grid gap-4 md:grid-cols-5">
+                                            @csrf
+
+                                            <div>
+                                                <label
+                                                    class="mb-2 block text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                                                    Channel
+                                                </label>
+                                                <select name="channel" required
+                                                    class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white">
+                                                    <option value="">Select one</option>
+                                                    <option value="call" @selected(old('channel') === 'call')>Call</option>
+                                                    <option value="email" @selected(old('channel') === 'email')>Email</option>
+                                                    <option value="sms" @selected(old('channel') === 'sms')>SMS</option>
+                                                    <option value="chat" @selected(old('channel') === 'chat')>Chat</option>
+                                                    <option value="internal_note" @selected(old('channel') === 'internal_note')>
+                                                        Internal Note</option>
+                                                </select>
+                                                @error('channel')
+                                                    <p class="mt-2 text-sm text-red-500">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+
+                                            <div>
+                                                <label
+                                                    class="mb-2 block text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                                                    Outcome
+                                                </label>
+                                                <select name="outcome" required
+                                                    class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white">
+                                                    <option value="">Select one</option>
+                                                    <option value="no_answer" @selected(old('outcome') === 'no_answer')>No Answer
+                                                    </option>
+                                                    <option value="left_voicemail" @selected(old('outcome') === 'left_voicemail')>Left
+                                                        Voicemail</option>
+                                                    <option value="responded" @selected(old('outcome') === 'responded')>Responded
+                                                    </option>
+                                                    <option value="appointment_booked" @selected(old('outcome') === 'appointment_booked')>
+                                                        Appointment Booked</option>
+                                                    <option value="not_interested" @selected(old('outcome') === 'not_interested')>Not
+                                                        Interested</option>
+                                                    <option value="wrong_number" @selected(old('outcome') === 'wrong_number')>Wrong
+                                                        Number</option>
+                                                    <option value="other" @selected(old('outcome') === 'other')>Other</option>
+                                                </select>
+                                                @error('outcome')
+                                                    <p class="mt-2 text-sm text-red-500">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+
+                                            <div>
+                                                <label
+                                                    class="mb-2 block text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                                                    Attempted At
+                                                </label>
+                                                <input type="datetime-local" name="attempted_at" required
+                                                    value="{{ old('attempted_at', now()->format('Y-m-d\TH:i')) }}"
+                                                    class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white">
+                                                @error('attempted_at')
+                                                    <p class="mt-2 text-sm text-red-500">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+
+                                            <div>
+                                                <label
+                                                    class="mb-2 block text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                                                    Next Follow-Up At
+                                                </label>
+                                                <input type="datetime-local" name="next_follow_up_at"
+                                                    class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white">
+                                            </div>
+
+                                            <div class="md:col-span-5">
+                                                <label
+                                                    class="mb-2 block text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                                                    Note
+                                                </label>
+                                                <textarea name="note" rows="3"
+                                                    class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"></textarea>
+                                            </div>
+
+                                            <div class="md:col-span-5 flex items-center justify-end gap-3">
+                                                <button type="button" @click="open = false"
+                                                    class="inline-flex items-center rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800">
+                                                    Cancel
+                                                </button>
+
+                                                <button type="submit"
+                                                    class="inline-flex items-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200">
+                                                    Save Follow-Up
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+            @endforeach
+            </tbody>
+            </table>
         </div>
+
+        <div class="mt-6">
+            {{ $intakes->links() }}
+        </div>
+        @endif
+    </div>
     </div>
 </x-layouts::app>
