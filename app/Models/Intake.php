@@ -46,4 +46,9 @@ class Intake extends Model
     {
         return $this->hasMany(FollowUp::class);
     }
+
+    public function activityLogs(): HasMany
+    {
+        return $this->hasMany(ActivityLog::class)->latest();
+    }
 }
