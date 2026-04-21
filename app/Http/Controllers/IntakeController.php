@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use App\Models\FollowUp;
+use App\Services\ActivityLogService;
 
 class IntakeController extends Controller
 {
@@ -105,7 +106,7 @@ class IntakeController extends Controller
         return view('intakes.create', compact('assignees'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, ActivityLogService $activityLogService)
     {
         $user = $request->user();
 
@@ -144,7 +145,7 @@ class IntakeController extends Controller
             ],
         ]);
 
-        DB::transaction(function () use ($validated, $organizationId) {
+        DB::transaction(function () use ($validated, $organizationId, $user, $activityLogService) {
             $contact = Contact::create([
                 'organization_id' => $organizationId,
                 'first_name' => $validated['first_name'],
@@ -155,20 +156,20 @@ class IntakeController extends Controller
                 'notes' => null,
             ]);
 
-            Intake::create([
+            $intake = Intake::create([
                 'organization_id' => $organizationId,
                 'contact_id' => $contact->id,
                 'assigned_user_id' => $validated['assigned_user_id'] ?? null,
-                'source' => filled($validated['source'] ?? null)
-                    ? str($validated['source'])->lower()->trim()->toString()
-                    : null,
-                'status' => $validated['status'],
-                'urgency' => $validated['urgency'],
+                'source' => $validated['source'] ?? null,
                 'summary' => $validated['summary'],
                 'details' => $validated['details'] ?? null,
+                'status' => $validated['status'],
+                'urgency' => $validated['urgency'],
                 'received_at' => now(),
                 'last_activity_at' => now(),
             ]);
+
+            $activityLogService->logIntakeCreated($user, $intake);
         });
 
         return redirect()
@@ -176,7 +177,7 @@ class IntakeController extends Controller
             ->with('status', 'Intake created successfully.');
     }
 
-    public function update(Request $request, Intake $intake)
+    public function update(Request $request, Intake $intake, ActivityLogService $activityLogService)
     {
         $user = $request->user();
 
@@ -208,11 +209,34 @@ class IntakeController extends Controller
             ],
         ]);
 
-        $intake->update([
-            'status' => $validated['status'],
-            'urgency' => $validated['urgency'],
-            'assigned_user_id' => $validated['assigned_user_id'] ?? null,
-        ]);
+        DB::transaction(function () use ($validated, $intake, $user, $activityLogService) {
+            $originalAssignedUserId = $intake->assigned_user_id;
+            $originalStatus = $intake->status;
+
+            $intake->update([
+                'status' => $validated['status'],
+                'urgency' => $validated['urgency'],
+                'assigned_user_id' => $validated['assigned_user_id'] ?? null,
+            ]);
+
+            if ($originalAssignedUserId !== $intake->assigned_user_id) {
+                $activityLogService->logIntakeReassigned(
+                    $user,
+                    $intake,
+                    $originalAssignedUserId,
+                    $intake->assigned_user_id
+                );
+            }
+
+            if ($originalStatus !== $intake->status) {
+                $activityLogService->logIntakeStatusUpdated(
+                    $user,
+                    $intake,
+                    $originalStatus,
+                    $intake->status
+                );
+            }
+        });
 
         return redirect()
             ->route('intakes.show', $intake)
