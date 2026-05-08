@@ -1,4 +1,4 @@
-version: '3.9'
+
 
 services:
   app:
@@ -10,7 +10,7 @@ services:
     volumes:
       - ./:/var/www/html
     ports:
-      - "8000:8000"
+      - "8001:8000"
     depends_on:
       - db
     networks:
@@ -28,6 +28,20 @@ services:
       - "5433:5432"
     volumes:
       - firmflow_postgres_data:/var/lib/postgresql/data
+    networks:
+      - firmflow
+
+  node:
+    image: node:22
+    container_name: firmflow_node
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - app
     networks:
       - firmflow
 
