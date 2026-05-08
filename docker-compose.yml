@@ -1,0 +1,38 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: firmflow_app
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    networks:
+      - firmflow
+
+  db:
+    image: postgres:16
+    container_name: firmflow_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: firmflow
+      POSTGRES_USER: firmflow_user
+      POSTGRES_PASSWORD: firmflow_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - firmflow_postgres_data:/var/lib/postgresql/data
+    networks:
+      - firmflow
+
+networks:
+  firmflow:
+
+volumes:
+  firmflow_postgres_data:
